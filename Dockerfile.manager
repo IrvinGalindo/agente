@@ -1,11 +1,18 @@
-# Dockerfile.manager - Para ejecutar múltiples servicios
-FROM docker/compose:latest
+# Dockerfile.manager - Para ejecutar múltiples servicios sin PostgreSQL local
+FROM docker/compose:alpine-1.29.2
 
-# Instalar Docker CLI y otras herramientas necesarias
-RUN apk add --no-cache docker-cli curl bash nginx
+# Instalar herramientas necesarias
+RUN apk add --no-cache \
+    docker-cli \
+    curl \
+    bash \
+    nginx \
+    wget \
+    gettext \
+    shadow
 
 # Crear directorios necesarios
-RUN mkdir -p /app /etc/nginx/conf.d /var/log/nginx /var/run
+RUN mkdir -p /app /etc/nginx/conf.d /var/log/nginx /var/run /tmp
 
 # Copiar archivos de configuración
 COPY docker-compose.yml /app/
