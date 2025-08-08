@@ -1,4 +1,3 @@
-# Dockerfile.manager - Interface web para gestionar Ollama
 FROM node:18-alpine
 
 # Instalar dependencias del sistema
@@ -7,13 +6,15 @@ RUN apk add --no-cache curl bash
 # Crear directorio de la aplicación
 WORKDIR /app
 
-# Crear package.json
 # Copiar archivos de configuración
 COPY package.json ./
-COPY server.js ./
 
-# Instalar dependencias
-RUN npm install
+# Limpiar cache de npm e instalar dependencias
+RUN npm cache clean --force
+RUN npm install --only=production --verbose
+
+# Copiar código fuente
+COPY server.js ./
 
 # Crear directorio público y copiar archivos estáticos
 RUN mkdir -p public
