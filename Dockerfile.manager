@@ -39,14 +39,14 @@ RUN node --version && npm --version
 # Instalar Ollama
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
-# Crear directorios de trabajo
-RUN mkdir -p /app /var/log/supervisor /etc/supervisor/conf.d /var/log/nginx
-
-# Crear usuario para n8n
+# Crear usuario para n8n explícitamente
 RUN useradd -m -s /bin/bash n8n
 
 # Instalar n8n globalmente
 RUN npm install -g n8n@latest
+
+# Crear directorios de trabajo
+RUN mkdir -p /app /var/log/supervisor /etc/supervisor/conf.d /var/log/nginx
 
 # Copiar archivos de configuración
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -57,8 +57,7 @@ COPY package.json /app/package.json
 
 # Configurar permisos
 RUN chmod +x /app/start.sh
-RUN chown -R n8n:n8n /home/n8n
-RUN mkdir -p /home/n8n/.n8n && chown -R n8n:n8n /home/n8n/.n8n
+RUN mkdir -p /home/n8n/.n8n && chown -R n8n:n8n /home/n8n
 
 # Instalar dependencias de Node.js para Evolution API
 WORKDIR /app

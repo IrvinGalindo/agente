@@ -15,13 +15,16 @@ log "📁 Creando directorios necesarios..."
 mkdir -p /var/log/supervisor /var/log/nginx /home/n8n/.n8n /tmp
 chmod 755 /var/log/supervisor /var/log/nginx /home/n8n/.n8n /tmp
 
-log "🔧 Configurando permisos..."
-# Si estamos usando la imagen de Node.js, usar el usuario 'node' en lugar de 'n8n'
-if id "node" &>/dev/null; then
-    chown -R node:node /home/node/.n8n 2>/dev/null || mkdir -p /home/node/.n8n && chown -R node:node /home/node/.n8n
-elif id "n8n" &>/dev/null; then
-    chown -R n8n:n8n /home/n8n/.n8n 2>/dev/null || mkdir -p /home/n8n/.n8n && chown -R n8n:n8n /home/n8n/.n8n
+log "🔧 Configurando permisos y usuarios..."
+# Crear usuario n8n si no existe
+if ! id "n8n" &>/dev/null; then
+    log "👤 Creando usuario n8n..."
+    useradd -m -s /bin/bash n8n
 fi
+
+# Configurar directorios para n8n
+mkdir -p /home/n8n/.n8n
+chown -R n8n:n8n /home/n8n/.n8n
 
 log "📋 Verificando variables de entorno..."
 echo "PORT: ${PORT:-10000}"
@@ -69,8 +72,10 @@ npm init -y > /dev/null 2>&1
 npm install express http-proxy-middleware dockerode --save > /dev/null 2>&1 || log "⚠️  Error instalando dependencias npm, continuando..."
 
 log "🔧 Configurando Nginx..."
-# Actualizar configuración de Nginx con el puerto correcto
-sed -i "s/listen 80;/listen ${PORT:-10000};/g" /etc/nginx/sites-available/default
+# Actualizar configuración de Nginx con el puerto correcto desde variable de entorno
+NGINX_PORT=${PORT:-10000}
+log "📍 Configurando Nginx para puerto: $NGINX_PORT"
+sed -i "s/listen 10000;/listen $NGINX_PORT;/g" /etc/nginx/sites-available/default
 
 # Test de configuración de Nginx
 if nginx -t > /dev/null 2>&1; then
