@@ -1,31 +1,56 @@
-# Dockerfile.manager - Para ejecutar múltiples servicios sin PostgreSQL local
-FROM docker/compose:alpine-1.29.2
+# Dockerfile optimizado para Render (sin Docker-in-Docker)
+FROM ubuntu:22.04
 
-# Instalar herramientas necesarias
-RUN apk add --no-cache \
-    docker-cli \
+# Variables de entorno
+ENV DEBIAN_FRONTEND=noninteractive
+ENV NODE_VERSION=18
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
     curl \
-    bash \
-    nginx \
     wget \
-    gettext \
-    shadow
+    nginx \
+    supervisor \
+    python3 \
+    python3-pip \
+    nodejs \
+    npm \
+    postgresql-client \
+    redis-tools \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    && rm -rf /var/lib/apt/lists/*
 
-# Crear directorios necesarios
-RUN mkdir -p /app /etc/nginx/conf.d /var/log/nginx /var/run /tmp
+# Instalar Node.js 18 (para n8n)
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
+
+# Instalar Ollama
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
+# Instalar n8n globalmente
+RUN npm install -g n8n@latest
+
+# Crear directorios de trabajo
+RUN mkdir -p /app /var/log/supervisor /etc/supervisor/conf.d /var/log/nginx
+
+# Crear usuario para n8n
+RUN useradd -m -s /bin/bash n8n
 
 # Copiar archivos de configuración
-COPY docker-compose.yml /app/
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY start.sh /app/
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY nginx.conf /etc/nginx/sites-available/default
+COPY start.sh /app/start.sh
+COPY evolution-api.js /app/evolution-api.js
 
-# Hacer el script ejecutable
+# Configurar permisos
 RUN chmod +x /app/start.sh
+RUN chown -R n8n:n8n /home/n8n
+RUN mkdir -p /home/n8n/.n8n && chown -R n8n:n8n /home/n8n/.n8n
 
-WORKDIR /app
-
-# Exponer el puerto principal
+# Exponer puerto
 EXPOSE 10000
 
-# Comando de inicio
+# Usar supervisor para manejar múltiples procesos
 CMD ["/app/start.sh"]
