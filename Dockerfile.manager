@@ -5,32 +5,39 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV NODE_VERSION=18
 
-# Instalar dependencias del sistema
-RUN apt-get update && apt-get install -y \
+# Actualizar sistema e instalar dependencias básicas
+RUN apt-get update && apt-get upgrade -y
+
+# Instalar dependencias del sistema en capas para mejor caching
+RUN apt-get install -y \
     curl \
     wget \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    software-properties-common
+
+# Instalar Node.js 18 desde el repositorio oficial de Ubuntu
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update && \
+    apt-get install -y nodejs
+
+# Instalar otras herramientas necesarias
+RUN apt-get install -y \
     nginx \
     supervisor \
     python3 \
     python3-pip \
-    nodejs \
-    npm \
     postgresql-client \
     redis-tools \
-    ca-certificates \
-    gnupg \
-    lsb-release \
-    && rm -rf /var/lib/apt/lists/*
+    build-essential
 
-# Instalar Node.js 18 (para n8n)
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
-    && apt-get install -y nodejs
+# Verificar instalación de Node.js
+RUN node --version && npm --version
 
 # Instalar Ollama
 RUN curl -fsSL https://ollama.com/install.sh | sh
-
-# Instalar n8n globalmente
-RUN npm install -g n8n@latest
 
 # Crear directorios de trabajo
 RUN mkdir -p /app /var/log/supervisor /etc/supervisor/conf.d /var/log/nginx
@@ -38,16 +45,27 @@ RUN mkdir -p /app /var/log/supervisor /etc/supervisor/conf.d /var/log/nginx
 # Crear usuario para n8n
 RUN useradd -m -s /bin/bash n8n
 
+# Instalar n8n globalmente
+RUN npm install -g n8n@latest
+
 # Copiar archivos de configuración
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY nginx.conf /etc/nginx/sites-available/default
 COPY start.sh /app/start.sh
 COPY evolution-api.js /app/evolution-api.js
+COPY package.json /app/package.json
 
 # Configurar permisos
 RUN chmod +x /app/start.sh
 RUN chown -R n8n:n8n /home/n8n
 RUN mkdir -p /home/n8n/.n8n && chown -R n8n:n8n /home/n8n/.n8n
+
+# Instalar dependencias de Node.js para Evolution API
+WORKDIR /app
+RUN npm install --production
+
+# Limpiar cache de apt
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Exponer puerto
 EXPOSE 10000
