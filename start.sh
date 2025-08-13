@@ -16,7 +16,12 @@ mkdir -p /var/log/supervisor /var/log/nginx /home/n8n/.n8n /tmp
 chmod 755 /var/log/supervisor /var/log/nginx /home/n8n/.n8n /tmp
 
 log "🔧 Configurando permisos..."
-chown -R n8n:n8n /home/n8n/.n8n
+# Si estamos usando la imagen de Node.js, usar el usuario 'node' en lugar de 'n8n'
+if id "node" &>/dev/null; then
+    chown -R node:node /home/node/.n8n 2>/dev/null || mkdir -p /home/node/.n8n && chown -R node:node /home/node/.n8n
+elif id "n8n" &>/dev/null; then
+    chown -R n8n:n8n /home/n8n/.n8n 2>/dev/null || mkdir -p /home/n8n/.n8n && chown -R n8n:n8n /home/n8n/.n8n
+fi
 
 log "📋 Verificando variables de entorno..."
 echo "PORT: ${PORT:-10000}"
